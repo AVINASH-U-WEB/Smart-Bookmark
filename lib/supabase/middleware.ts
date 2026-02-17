@@ -2,8 +2,11 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function updateSession(request: NextRequest) {
-    let supabaseResponse = NextResponse.next({
-        request,
+    // Create an unmodified response
+    let response = NextResponse.next({
+        request: {
+            headers: request.headers,
+        },
     })
 
     const supabase = createServerClient(
@@ -15,54 +18,52 @@ export async function updateSession(request: NextRequest) {
                     return request.cookies.getAll()
                 },
                 setAll(cookiesToSet) {
-                    cookiesToSet.forEach(({ name, value, options }) => {
-                        request.cookies.set(name, value)
-                    })
-                    supabaseResponse = NextResponse.next({
-                        request,
+                    cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+                    response = NextResponse.next({
+                        request: {
+                            headers: request.headers,
+                        },
                     })
                     cookiesToSet.forEach(({ name, value, options }) =>
-                        supabaseResponse.cookies.set(name, value, options)
+                        response.cookies.set(name, value, options)
                     )
                 },
             },
         }
     )
 
-    // REFRESH SESSION: This will update the cookie if needed
+    // This will refresh the session if expired - IMPORTANT for SSR
     const {
         data: { user },
     } = await supabase.auth.getUser()
 
-    // 1. PROTECTED ROUTE CHECK
+    // Protect dashboard routes - redirect to login if no user
     if (
         !user &&
         !request.nextUrl.pathname.startsWith('/login') &&
-        !request.nextUrl.pathname.startsWith('/auth')
+        !request.nextUrl.pathname.startsWith('/auth') &&
+        request.nextUrl.pathname !== '/'
     ) {
-        // no user, redirect to login
         const url = request.nextUrl.clone()
         url.pathname = '/login'
         return NextResponse.redirect(url)
     }
 
-    // 2. AUTHENTICATED USER CHECK (Redirect away from login)
-    if (user && request.nextUrl.pathname === '/login') {
+    // Redirect authenticated users away from login page
+    if (user && (request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/')) {
         const url = request.nextUrl.clone()
         url.pathname = '/dashboard'
 
-        // IMPORTANT: We must copy the session cookies to the redirect response
-        // because supabase.auth.getUser() might have refreshed them!
+        // Create redirect response and copy all cookies from the supabase response
         const redirectResponse = NextResponse.redirect(url)
 
-        // Copy cookies from supabaseResponse (which has the fresh session) to redirectResponse
-        const setCookieHeader = supabaseResponse.headers.get('set-cookie')
-        if (setCookieHeader) {
-            redirectResponse.headers.set('set-cookie', setCookieHeader)
-        }
+        // Copy ALL cookies from response to redirectResponse
+        response.cookies.getAll().forEach((cookie) => {
+            redirectResponse.cookies.set(cookie.name, cookie.value, cookie)
+        })
 
         return redirectResponse
     }
 
-    return supabaseResponse
+    return response
 }
