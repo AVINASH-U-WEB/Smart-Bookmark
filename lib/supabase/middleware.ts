@@ -2,11 +2,8 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function updateSession(request: NextRequest) {
-    // Create an unmodified response
-    let response = NextResponse.next({
-        request: {
-            headers: request.headers,
-        },
+    let supabaseResponse = NextResponse.next({
+        request,
     })
 
     const supabase = createServerClient(
@@ -19,23 +16,21 @@ export async function updateSession(request: NextRequest) {
                 },
                 setAll(cookiesToSet) {
                     cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-                    response = NextResponse.next({
-                        request: {
-                            headers: request.headers,
-                        },
+                    supabaseResponse = NextResponse.next({
+                        request,
                     })
                     cookiesToSet.forEach(({ name, value, options }) =>
-                        response.cookies.set(name, value, options)
+                        supabaseResponse.cookies.set(name, value, options)
                     )
                 },
             },
         }
     )
 
-    // This will refresh the session if expired - IMPORTANT for SSR
-    const {
-        data: { user },
-    } = await supabase.auth.getUser()
+    // IMPORTANT: Use getClaims() instead of getUser() in middleware
+    // getClaims() validates the JWT signature every time, making it safe for server-side auth checks
+    const { data, error } = await supabase.auth.getClaims()
+    const user = error ? null : data
 
     // Protect dashboard routes - redirect to login if no user
     if (
@@ -53,17 +48,8 @@ export async function updateSession(request: NextRequest) {
     if (user && (request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/')) {
         const url = request.nextUrl.clone()
         url.pathname = '/dashboard'
-
-        // Create redirect response and copy all cookies from the supabase response
-        const redirectResponse = NextResponse.redirect(url)
-
-        // Copy ALL cookies from response to redirectResponse
-        response.cookies.getAll().forEach((cookie) => {
-            redirectResponse.cookies.set(cookie.name, cookie.value, cookie)
-        })
-
-        return redirectResponse
+        return NextResponse.redirect(url)
     }
 
-    return response
+    return supabaseResponse
 }
