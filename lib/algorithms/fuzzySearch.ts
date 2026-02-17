@@ -44,9 +44,18 @@ export function fuzzyMatch(
     target: string,
     threshold: number = 0.6
 ): boolean {
-    const distance = levenshteinDistance(query.toLowerCase(), target.toLowerCase())
+    const queryLower = query.toLowerCase()
+    const targetLower = target.toLowerCase()
+
+    // If query is a substring of target, it's a perfect match for our purposes
+    if (targetLower.includes(queryLower)) {
+        return true
+    }
+
+    const distance = levenshteinDistance(queryLower, targetLower)
     const maxLength = Math.max(query.length, target.length)
     const similarity = 1 - distance / maxLength
+
     return similarity >= threshold
 }
 
