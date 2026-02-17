@@ -91,21 +91,31 @@ Visit `http://localhost:3000` to see the app.
 
 ---
 
-## 🐛 Challenges & Solutions (Problem Solving)
+## 🐛 Challenges & Solutions (Technical Deep Dive)
+ 
+During development, we encountered and solved several critical engineering challenges. These are the "war stories":
 
-During development, we encountered and solved several critical engineering challenges:
+### 1. The "Vercel Redirect Loop" (Hardest Challenge)
+**Problem:** In production (Vercel), users were getting stuck in an infinite redirect loop between `/login` and `/dashboard`. 
+*   **Root Cause:** A Race Condition between Next.js Edge Middleware and the Client-side Router. The Middleware would see a valid session cookie and force a redirect to Dashboard. However, the Dashboard (running in the browser) would briefly see an unhydrated state, assume the user wasn't logged in, and redirect back to Login. 
+*   **Solution:** Implemented a **Client-Side Authority Strategy**.
+    *   **Relaxed Middleware:** Modified middleware to *protect* routes but *stop forcing redirects*. It now allows authenticated users to visit `/login` without interference.
+    *   **Smart Client:** Updated `login/page.tsx` to autodetect sessions and handle the redirect to Dashboard itself.
+    *   **Result:** The browser acts as the single source of truth for navigation, eliminating the server-client conflict.
 
-### 1. CORS Errors on Metadata Fetching
-**Problem:** Browsers block client-side requests to fetch HTML from external domains (e.g., `fetching google.com` from `localhost`), causing CORS errors.
-**Solution:** Implemented a **Backend-for-Frontend (BFF)** pattern. Created a Next.js API route (`/api/metadata`) that acts as a proxy. The server fetches the HTML (bypassing CORS) and returns clean JSON to the client.
+### 2. Metadata Fetching Timeouts
+**Problem:** Fetching Open Graph data from external URLs (like a slow Wordpress site) would causing the "Add Bookmark" UI to hang for 10+ seconds, leading to a poor UX.
+**Solution:** Implemented a **Fail-Fast Architecture**. 
+*   The API route has a strict 5-second timeout. 
+*   If the external site doesn't respond, we abort the fetch and save the bookmark with a default title/icon immediately. 
+*   **Result:** User operations never block, regardless of external network conditions.
 
-### 2. Real-time Race Conditions
-**Problem:** When a user deleted a bookmark in Tab A, Tab B would sometimes show the old data until refresh.
-**Solution:** Implemented **Supabase Realtime Subscriptions**. The app listens for `postgres_changes` events. When a `DELETE` event occurs, the state is updated instantly across all active sessions without a reload.
-
-### 3. Duplicate URL Variations
-**Problem:** Users could save `google.com`, `https://google.com`, and `google.com/` as three separate bookmarks.
-**Solution:** Developed a **URL Normalization Algorithm**. Before saving, all URLs are stripped of protocol (`https://`), `www.`, and trailing slashes. This normalized string is used for uniqueness checks.
+### 3. Fuzzy Search Implementation
+**Problem:** Standard `.includes()` search failed when users made typos (e.g., searching "ChatGT" for "ChatGPT").
+**Solution:** Custom implementation of the **Levenshtein Distance Algorithm**.
+*   Calculates the "edit distance" between the search query and bookmark titles.
+*   If the similarity score is > 0.4, it's a match.
+*   **Result:** Users can find content even with significant spelling errors.
 
 ---
 
