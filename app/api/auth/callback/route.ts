@@ -2,33 +2,29 @@ import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
-    const { searchParams, origin } = new URL(request.url)
-    const code = searchParams.get('code')
-    const next = searchParams.get('next') ?? '/dashboard'
+    const requestUrl = new URL(request.url)
+    const code = requestUrl.searchParams.get('code')
+    const next = requestUrl.searchParams.get('next') ?? '/dashboard'
+    const origin = requestUrl.origin
 
     if (code) {
         const supabase = await createClient()
         const { error } = await supabase.auth.exchangeCodeForSession(code)
 
         if (!error) {
+            // Determine the correct redirect origin
+            // On Vercel, request.url might differ from the public URL
             const forwardedHost = request.headers.get('x-forwarded-host')
-            const isLocalEnv = process.env.NODE_ENV === 'development'
+            const isLocal = process.env.NODE_ENV === 'development'
 
-            // Build redirect URL
-            let redirectUrl: string
-            if (isLocalEnv) {
-                redirectUrl = `${origin}${next}`
-            } else if (forwardedHost) {
-                redirectUrl = `https://${forwardedHost}${next}`
-            } else {
-                redirectUrl = `${origin}${next}`
+            let redirectOrigin = origin
+            if (!isLocal && forwardedHost) {
+                redirectOrigin = `https://${forwardedHost}`
             }
 
-            // Return redirect - the middleware will handle adding cookies
-            return NextResponse.redirect(redirectUrl)
+            return NextResponse.redirect(`${redirectOrigin}${next}`)
         }
     }
 
-    // Return the user to login with error
     return NextResponse.redirect(`${origin}/login?error=auth_code_error`)
 }
