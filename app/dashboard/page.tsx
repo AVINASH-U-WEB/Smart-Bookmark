@@ -33,10 +33,10 @@ export default function DashboardPage() {
         checkAuth()
 
         // Listen for auth changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            if (!session) {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            if (event === 'SIGNED_OUT') {
                 router.push('/login')
-            } else if (session.user) {
+            } else if (session?.user) {
                 setUser(session.user)
                 // Reload bookmarks if user changed
                 if (user?.id !== session.user.id) {

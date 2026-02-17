@@ -27,12 +27,12 @@ export async function updateSession(request: NextRequest) {
         }
     )
 
-    // IMPORTANT: Use getClaims() instead of getUser() in middleware
-    // getClaims() validates the JWT signature every time, making it safe for server-side auth checks
-    const { data, error } = await supabase.auth.getClaims()
-    const user = error ? null : data
+    // IMPORTANT: Use getUser() to verify the session on the server
+    const {
+        data: { user },
+    } = await supabase.auth.getUser()
 
-    // Protect dashboard routes - redirect to login if no user
+    // 1. PROTECTED ROUTE CHECK
     if (
         !user &&
         !request.nextUrl.pathname.startsWith('/login') &&
@@ -41,14 +41,24 @@ export async function updateSession(request: NextRequest) {
     ) {
         const url = request.nextUrl.clone()
         url.pathname = '/login'
-        return NextResponse.redirect(url)
+        const response = NextResponse.redirect(url)
+        // Copy cookies to redirect response
+        supabaseResponse.cookies.getAll().forEach(cookie => {
+            response.cookies.set(cookie.name, cookie.value, cookie)
+        })
+        return response
     }
 
-    // Redirect authenticated users away from login page
-    if (user && (request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/')) {
+    // 2. AUTHENTICATED USER CHECK (Redirect away from login)
+    if (user && request.nextUrl.pathname === '/login') {
         const url = request.nextUrl.clone()
         url.pathname = '/dashboard'
-        return NextResponse.redirect(url)
+        const response = NextResponse.redirect(url)
+        // Copy cookies to redirect response
+        supabaseResponse.cookies.getAll().forEach(cookie => {
+            response.cookies.set(cookie.name, cookie.value, cookie)
+        })
+        return response
     }
 
     return supabaseResponse
