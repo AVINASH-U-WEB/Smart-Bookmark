@@ -24,6 +24,17 @@ export default function LoginPage() {
         }
     }
 
+    // Check if already logged in
+    useState(() => {
+        const checkSession = async () => {
+            const { data: { session } } = await supabase.auth.getSession()
+            if (session) {
+                router.replace('/dashboard')
+            }
+        }
+        checkSession()
+    })
+
     return (
         <div className="min-h-screen flex flex-col items-center justify-center p-4">
             {/* Brutalist Container */}

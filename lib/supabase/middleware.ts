@@ -32,7 +32,7 @@ export async function updateSession(request: NextRequest) {
         data: { user },
     } = await supabase.auth.getUser()
 
-    // 1. PROTECTED ROUTE CHECK
+    // 1. PROTECTED ROUTE CHECK (Keep this to protect /dashboard)
     if (
         !user &&
         !request.nextUrl.pathname.startsWith('/login') &&
@@ -49,17 +49,9 @@ export async function updateSession(request: NextRequest) {
         return response
     }
 
-    // 2. AUTHENTICATED USER CHECK (Redirect away from login)
-    if (user && request.nextUrl.pathname === '/login') {
-        const url = request.nextUrl.clone()
-        url.pathname = '/dashboard'
-        const response = NextResponse.redirect(url)
-        // Copy cookies to redirect response
-        supabaseResponse.cookies.getAll().forEach(cookie => {
-            response.cookies.set(cookie.name, cookie.value, cookie)
-        })
-        return response
-    }
+    // 2. REMOVED AUTOMATIC REDIRECT FROM LOGIN
+    // We will let the client-side code handle the redirect from /login to /dashboard
+    // This prevents the server-side redirect loop
 
     return supabaseResponse
 }

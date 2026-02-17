@@ -17,35 +17,47 @@ export default function DashboardPage() {
     const supabase = createClient()
 
     useEffect(() => {
-        // Robust check for authentication
+        let mounted = true
+
         const checkAuth = async () => {
-            const { data: { session } } = await supabase.auth.getSession()
+            try {
+                const { data: { session }, error } = await supabase.auth.getSession()
 
-            if (!session) {
-                router.push('/login')
-                return
+                if (!mounted) return
+
+                if (error || !session) {
+                    console.log('No active session, redirecting to login')
+                    router.replace('/login')
+                    return
+                }
+
+                setUser(session.user)
+                loadBookmarks()
+            } catch (error) {
+                console.error('Auth check error:', error)
+                router.replace('/login')
             }
-
-            setUser(session.user)
-            loadBookmarks()
         }
 
         checkAuth()
 
-        // Listen for auth changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-            if (event === 'SIGNED_OUT') {
-                router.push('/login')
+            if (!mounted) return
+
+            if (event === 'SIGNED_OUT' || !session) {
+                router.replace('/login')
             } else if (session?.user) {
                 setUser(session.user)
-                // Reload bookmarks if user changed
                 if (user?.id !== session.user.id) {
                     loadBookmarks()
                 }
             }
         })
 
-        return () => subscription.unsubscribe()
+        return () => {
+            mounted = false
+            subscription.unsubscribe()
+        }
     }, [])
 
     const loadBookmarks = async () => {
