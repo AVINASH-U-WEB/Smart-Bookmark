@@ -20,31 +20,25 @@ export default function DashboardPage() {
         // Robust check for authentication
         const checkAuth = async () => {
             const { data: { session } } = await supabase.auth.getSession()
+
             if (!session) {
-                // If no session, wait a moment and check again (double verification)
-                // This handles cases where cookies are just being set
-                setTimeout(async () => {
-                    const { data: { session: retrySession } } = await supabase.auth.getSession()
-                    if (!retrySession) {
-                        router.push('/login')
-                    } else {
-                        setUser(retrySession.user)
-                        loadBookmarks()
-                    }
-                }, 1000)
-            } else {
-                setUser(session.user)
-                loadBookmarks()
+                router.push('/login')
+                return
             }
+
+            setUser(session.user)
+            loadBookmarks()
         }
 
         checkAuth()
 
         // Listen for auth changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            if (session?.user) {
+            if (!session) {
+                router.push('/login')
+            } else if (session.user) {
                 setUser(session.user)
-                // Only load if not already loaded (to prevent double fetch)
+                // Reload bookmarks if user changed
                 if (user?.id !== session.user.id) {
                     loadBookmarks()
                 }
