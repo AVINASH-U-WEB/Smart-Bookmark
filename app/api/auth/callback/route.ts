@@ -9,9 +9,14 @@ export async function GET(request: Request) {
     if (code) {
         const supabase = await createClient()
         const { error } = await supabase.auth.exchangeCodeForSession(code)
+
         if (!error) {
             const forwardedHost = request.headers.get('x-forwarded-host')
             const isLocalEnv = process.env.NODE_ENV === 'development'
+
+            // Allow session to propagate
+            await new Promise(resolve => setTimeout(resolve, 500))
+
             if (isLocalEnv) {
                 return NextResponse.redirect(`${origin}${next}`)
             } else if (forwardedHost) {
@@ -23,5 +28,5 @@ export async function GET(request: Request) {
     }
 
     // Return the user to an error page with instructions
-    return NextResponse.redirect(`${origin}/auth/auth-code-error`)
+    return NextResponse.redirect(`${origin}/login?error=auth_code_error`)
 }
