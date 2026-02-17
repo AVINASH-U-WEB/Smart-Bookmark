@@ -14,19 +14,21 @@ export async function GET(request: Request) {
             const forwardedHost = request.headers.get('x-forwarded-host')
             const isLocalEnv = process.env.NODE_ENV === 'development'
 
-            // Allow session to propagate
-            await new Promise(resolve => setTimeout(resolve, 500))
-
+            // Build redirect URL
+            let redirectUrl: string
             if (isLocalEnv) {
-                return NextResponse.redirect(`${origin}${next}`)
+                redirectUrl = `${origin}${next}`
             } else if (forwardedHost) {
-                return NextResponse.redirect(`https://${forwardedHost}${next}`)
+                redirectUrl = `https://${forwardedHost}${next}`
             } else {
-                return NextResponse.redirect(`${origin}${next}`)
+                redirectUrl = `${origin}${next}`
             }
+
+            // Return redirect - the middleware will handle adding cookies
+            return NextResponse.redirect(redirectUrl)
         }
     }
 
-    // Return the user to an error page with instructions
+    // Return the user to login with error
     return NextResponse.redirect(`${origin}/login?error=auth_code_error`)
 }
