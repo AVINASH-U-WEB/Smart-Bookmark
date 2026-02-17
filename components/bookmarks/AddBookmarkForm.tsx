@@ -41,7 +41,7 @@ export default function AddBookmarkForm({ existingUrls, onBookmarkAdded }: AddBo
             // Fetch metadata via API route (avoids CORS)
             // Set a timeout to prevent hanging
             const controller = new AbortController()
-            const timeoutId = setTimeout(() => controller.abort(), 8000) // 8 second timeout
+            const timeoutId = setTimeout(() => controller.abort(), 2500) // 2.5 second timeout (FAST)
 
             let metadata = { title: url, description: '', favicon: '', ogImage: '' }
 
@@ -169,7 +169,7 @@ export default function AddBookmarkForm({ existingUrls, onBookmarkAdded }: AddBo
                         {isLoading ? (
                             <>
                                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                FETCHING...
+                                SAVING...
                             </>
                         ) : (
                             <>
