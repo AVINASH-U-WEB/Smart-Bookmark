@@ -13,11 +13,13 @@ export default function AddBookmarkForm({ existingUrls, onBookmarkAdded }: AddBo
     const [url, setUrl] = useState('')
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState('')
+    const [success, setSuccess] = useState('')
     const [showForm, setShowForm] = useState(false)
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setError('')
+        setSuccess('')
 
         // Validation
         if (!url.trim()) {
@@ -36,6 +38,11 @@ export default function AddBookmarkForm({ existingUrls, onBookmarkAdded }: AddBo
         }
 
         setIsLoading(true)
+
+        // ... metadata fetch ...
+
+        // ... save to db ...
+
 
         try {
             // Fetch metadata via API route (avoids CORS)
@@ -94,8 +101,10 @@ export default function AddBookmarkForm({ existingUrls, onBookmarkAdded }: AddBo
             } else {
                 // Success
                 setUrl('')
-                setShowForm(false)
+                setSuccess('BOOKMARK SAVED! ADD ANOTHER?')
+                // setShowForm(false) // Keep open
                 onBookmarkAdded()
+                setTimeout(() => document.getElementById('url')?.focus(), 50)
             }
         } catch (err) {
             setError('An unexpected error occurred')
@@ -157,6 +166,11 @@ export default function AddBookmarkForm({ existingUrls, onBookmarkAdded }: AddBo
                 {error && (
                     <div className="bg-red-100 border-2 border-black p-3 text-red-600 font-bold text-sm shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] mb-4">
                         ⚠️ {error}
+                    </div>
+                )}
+                {success && (
+                    <div className="bg-green-100 border-2 border-black p-3 text-green-700 font-bold text-sm shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] mb-4">
+                        ✅ {success}
                     </div>
                 )}
 
